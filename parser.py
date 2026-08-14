@@ -1,19 +1,25 @@
+import requests
+from bs4 import BeautifulSoup
 import pandas as pd
-df = pd.read_excel("parsing_Otdelka_fasada_kamnem.xlsx")
-def include_words(text):
-    text = str(text).lower()
-    if "натуральный" in text and "камень" in text:
-        return True
-    else:
-        return False
+response = requests.get("https://news.ycombinator.com/")
+if response.status_code != 200:
+    print(f"Ошибка {response.status_code}")
+    exit()
+soup = BeautifulSoup(response.text,"html.parser")
+items = soup.find_all("span", class_ = "titleline")
+titles = []
+linkes = []
+for item in items:
+    if item.find("a"):
+        titles.append(item.find("a").text)
+        linkes.append(item.find("a").get("href"))
 
-df.to_excel("parsing_Otdelka_fasada_kamnem.xlsx")
-
-df["Целевая"]=df["Запрос"].apply(include_words)
-df_target = df[df["Целевая"] == True]
-df_target = df_target.drop(columns=["Целевая"])
-df_target["Длина запроса"] = df_target["Запрос"].str.len()
-df_sorted = df_target.sort_values("Длина запроса",ascending=False)
-df_sorted.to_excel("filtered_by_natural.xlsx",index=False)
-print(f"✅ Осталось запросов: {len(df_sorted)}")
-print("✅ Сохранено в filtered_by_natural.xlsx")
+df = pd.DataFrame({
+    "Заголовок" : titles,
+    "Ссылка" : linkes
+})
+for title in titles:
+    if not("AI" in title or "Python" in title):
+        titles.pop(title)
+df_sorted = df.sort_values("Заголовок", ascending=False)
+df_clean = df_sorted.drop_duplicates("Заголовок", keep="first")
