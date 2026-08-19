@@ -7,12 +7,11 @@ titles = []
 links = []
 pages = []
 dates = []
-pages = 3
 pages_num = []
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
-for page in range(1,pages):
+for page in range(1,3):
     if page == 1:
         url = "https://habr.com/ru/feed/"
     else:
@@ -31,20 +30,18 @@ for page in range(1,pages):
             print("Страница пуста, парсинг завершён")
             break
         for item in items:
-            time_tags = soup.find_all("time")
+            parent = item.find_parent("article") or item.find_parent("div", class_="tm-articles-list__item")
             time_tag = None
-            for t in time_tags:
-                if t.find_parent("article") and t.find_parent("article").find("a", class_="tm-title__link") == item:
-                    time_tag = t
-                    break
+            if parent:
+                time_tag = parent.find("time", recursive=True)
             titles.append(item.text)
             links.append("https://habr.com" + item.get('href'))
             pages_num.append(page)
             if time_tag:
                 dates.append(time_tag.get("datetime"))
             else:
+                print(f"Нет даты у поста: {item.text[:50]}...")
                 dates.append("")
-                print(f"Ошибка вывода даты стр - {page}")
     except requests.Timeout:
         print("Ошибка сервер долго грузится")
         break
