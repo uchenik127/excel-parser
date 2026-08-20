@@ -64,10 +64,43 @@ df_sorted =df_clean.sort_values("Заголовок",ascending= False)
 
 def telegram_send(message):
     token = "8936642415:AAEAKjoyk1jABLp7T_8VTr-epoUeFZ0pPps"
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    url = f"https://api.telegram.org/bot{token}/sчислоendMessage"
     chat_id = "1232862626"
     requests.post(url,data={"chat_id": chat_id, "text": message})
     return
+def split_message(text,max_length=4096):
+    result = []
+    characters = ""
+    if len(text) <= max_length:
+        result.append(text)
+        return result
+    else:
+        if "." in text:
+            parts = text.split(".")
+            while len(text) > max_length:
+                for sentencе in parts:
+                    if len(characters) + sentencе <= max_length:
+                        characters += sentencе
+                        parts = parts[1:]
+                    else:
+                        result.append(characters)
+                        characters = ""
+        else:
+            remainder = ""
+            number = 0
+            for part in text:
+                number += 1
+                part = remainder + part
+                if number == max_length:
+                    if part[-1] == " ":
+                        result.append(part)
+                    else:
+                        while part[-1] != " ":
+                            remainder += part[-1]
+                            part = part[:-1]
+                        result.append(part)
+                    number = 0
+    return result
 message= "📰 Сегодня на Habr (первые 3 страницы):\n"
 limit = 10
 for string in range(min(limit,len(df_sorted))):
