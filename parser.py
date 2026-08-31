@@ -4,6 +4,12 @@ import pandas as pd
 import time
 from datetime import datetime
 import os
+def get_updates(offset=None):
+    token = "8936642415:AAEAKjoyk1jABLp7T_8VTr-epoUeFZ0pPps"
+    url = f"https://api.telegram.org/bot{token}/getUpdates"
+    params = {"timeout": 10, "offset": offset}
+    response = requests.get(url, params=params)
+    return response.json()
 def clean_log_if_large(log_path = "parser.log",max_lines = 50):
     if not os.path.exists(log_path):
         return
@@ -43,6 +49,7 @@ def telegram_send(message,has_new_posts):
         requests.post(url, data={"chat_id": chat_id, "text": "Новых постов нет"})
     return
 
+
 log_file = open("parser.log","a", encoding="utf-8")
 preservation_file_r= open("sent_posts.txt","r", encoding="utf-8")
 preservation_file_a= open("sent_posts.txt","a", encoding="utf-8")
@@ -56,6 +63,17 @@ pages_num = []
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
+filter = False
+update = get_updates()
+keyword_from_tg = ""
+if update["ok"] and update["result"]:
+    keyword_from_tg = update["result"][-1]["message"]["text"]
+    if keyword_from_tg.startswith("/"):
+        print(f"Получена команда: {keyword_from_tg}, пропускаем")
+        filter = False
+        keyword_from_tg = ""
+    print(f"Получено слово: {keyword_from_tg}")
+    filter = True
 for headline_title in preservation_file_r:
     files_in_the_archive.add(headline_title.strip())
 for page in range(1,3):
@@ -110,13 +128,19 @@ df = pd.DataFrame({
     "Ссылка": links,
     "Дата" : dates
 })
+
+if filter:
+    df= df[df["Заголовок"].str.lower().str.contains(keyword_from_tg.lower(), na=False)]
 df["Заголовок"] = df["Заголовок"].fillna("")
 df["Заголовок"] = df["Заголовок"].astype(str)
 df_clean = df.drop_duplicates("Заголовок",keep="first")
 df_sorted =df_clean.sort_values("Заголовок",ascending= False)
 
 
-message= "📰 Сегодня на Habr (первые 3 страницы):\n"
+if filter:
+    message = f"📰 Найдено по запросу '{keyword_from_tg}':\n"
+else:
+    message = "📰 Все новые посты на Habr:\n"
 limit = 10
 new_posts_count = 0
 for string in range(min(limit,len(df_sorted))):
